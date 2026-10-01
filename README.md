@@ -114,16 +114,22 @@ npm run build
                                             └─────────────┼─────────────┘
                                                           │
                                                 recommendationEngine
-                                                anomalyEngine / csvParser
+                                                anomalyEngine
+                                                multiFormatPipeline
+                                                (ocrService, pdfParser, docxParser, smartCsvParser)
 ```
 
-### Modular Services:
-- `src/services/forecastEngine.ts`: Calculates daily cash curves (Past 30d actuals + Next 90d projections), tracking breach points against the safety reserve.
-- `src/services/riskEngine.ts`: Explainable multi-factor scoring (Liquidity 40%, Suppliers 25%, Inventory 20%, Operations 15%), calculating the 0-100 Financial Resilience Score.
-- `src/services/dependencyEngine.ts`: Constructs the React Flow digital twin nodes, edge transmission pathways, and status pulses.
-- `src/services/scenarioEngine.ts`: Executes shock cascades, recalculates balance sheet ripples, and compares Before vs After intervention.
-- `src/services/recommendationEngine.ts`: Formulates prioritized mitigation levers with calculated financial impact.
-- `src/services/csvParser.ts`: Ingests and validates customer, supplier, and inventory CSV datasets with real-time model synchronization.
+### Multi-Format Document Ingestion Engine (`src/services/documentParser/`):
+- `fileDetector.ts`: Auto-detects format (JPG/PNG/WEBP, PDF, DOCX, CSV) and validates file integrity.
+- `ocrService.ts`: Preprocesses images with canvas thresholding, extracts invoice/bill fields, and assigns empirical OCR confidence scores.
+- `pdfParser.ts`: Direct stream and layout parser for multi-page invoices, tax receipts, and line item tables with exact page traceability.
+- `docxParser.ts`: Word document parser extracting headings, structured paragraph summaries, and supplier statements (`Table 1`, `Table 2`).
+- `smartCsvParser.ts`: Fuzzy column mapping (`Client_Name` ➔ Customer, `Inv_Total` ➔ Amount, `Due` ➔ Due Date) with Indian Lakh/Crore and date normalizers.
+- `confidenceEngine.ts`: Evaluates field clarity: `90-100% High`, `70-89% Medium`, `<70% Needs Review`, and calculates the composite Data Quality Score.
+- `duplicateEngine.ts`: Prevents double-counting by checking invoice numbers, amounts, dates, and entities across documents.
+- `entityMatcher.ts`: Fuzzy string matching detecting entity variations (e.g. `ABC Industries Pvt Ltd` ≈ `ABC Industries` at 94% confidence) with Merge / Keep Separate controls.
+- `multiFormatPipeline.ts`: Fuses multi-format inputs into the unified Financial Digital Twin and detects potential What-If scenarios.
+- `sampleDocuments.ts`: Powers the 1-click **"Load Multi-Format Demo Bundle"** (PDF, CSV, DOCX, JPG).
 
 ---
 
@@ -131,9 +137,13 @@ npm run build
 
 ```
 finshield/
+├── backend/
+│   ├── main.py                      # FastAPI server with upload, processing, and twin endpoints
+│   └── requirements.txt             # Python backend dependencies
 ├── src/
 │   ├── types/
-│   │   └── index.ts                 # Strict TypeScript data contracts
+│   │   ├── index.ts                 # Strict TypeScript data contracts & ingestion interfaces
+│   │   └── declarations.d.ts        # Mammoth & PDF.js module declarations
 │   ├── services/
 │   │   ├── sampleData.ts            # Realistic synthetic MSME dataset (ABC Precision)
 │   │   ├── forecastEngine.ts        # 90-day baseline vs shock cash modeling
@@ -142,24 +152,36 @@ finshield/
 │   │   ├── dependencyEngine.ts      # Graph node & cascade status builder
 │   │   ├── scenarioEngine.ts        # What-if simulation & before/after comparison
 │   │   ├── recommendationEngine.ts  # Prioritized AI prevention protocols
-│   │   └── csvParser.ts             # CSV schema validation & template generation
+│   │   └── documentParser/          # Universal multi-format document intelligence layer
+│   │       ├── fileDetector.ts      # Format & MIME validation
+│   │       ├── normalizer.ts        # Indian currency (Lakh/Cr) and ISO date standardizer
+│   │       ├── confidenceEngine.ts  # 3-tier confidence scoring & data quality report
+│   │       ├── duplicateEngine.ts   # Cross-document duplicate invoice detection
+│   │       ├── entityMatcher.ts     # Fuzzy entity variation matching & resolution
+│   │       ├── ocrService.ts        # Image bill & receipt optical character extraction
+│   │       ├── pdfParser.ts         # Multi-page PDF text & table extractor
+│   │       ├── docxParser.ts        # Word/DOCX report & statement extractor
+│   │       ├── smartCsvParser.ts    # Schema detection & fuzzy column mapper
+│   │       ├── multiFormatPipeline.ts # End-to-end extraction orchestrator & twin sync
+│   │       └── sampleDocuments.ts   # 4 synthetic demo files (PDF, CSV, DOCX, JPG)
 │   ├── context/
-│   │   └── FinShieldContext.tsx     # Centralized reactive state & demo tour runner
+│   │   └── FinShieldContext.tsx     # Centralized reactive state, review queue, and tour runner
 │   ├── components/
-│   │   ├── common/                  # Navbar, MetricCard, RiskBadge, EarlyWarningBanner
+│   │   ├── common/                  # Navbar, MetricCard, RiskBadge, EarlyWarningBanner, DataSourceIndicator
 │   │   ├── charts/                  # CashFlowForecastChart (Recharts)
 │   │   ├── digitalTwin/             # DependencyGraph, TwinCustomNode (@xyflow/react)
 │   │   ├── simulation/              # ScenarioControls, CascadeVisualizer, BeforeAfterCard
 │   │   ├── actions/                 # ActionCard with intervention toggles
+│   │   ├── data/                    # MultiFormatUploader, DataReviewTable, DataQualityCard, EntityResolutionModal, DetectedScenariosCard, ImportHistoryTable
 │   │   └── demo/                    # DemoTourBar (60s automated presentation guide)
 │   ├── pages/
 │   │   ├── LandingPage.tsx          # Product introduction & value proposition
-│   │   ├── DashboardPage.tsx        # Executive fintech dashboard
+│   │   ├── DashboardPage.tsx        # Executive fintech dashboard with DataSourceIndicator
 │   │   ├── DigitalTwinPage.tsx      # Interactive full-canvas dependency twin
 │   │   ├── SimulatePage.tsx         # What-if scenario simulator
 │   │   ├── RiskPage.tsx             # 4-question explainable AI diagnostic framework
 │   │   ├── ActionsPage.tsx          # AI prevention & decision action center
-│   │   └── DataImportPage.tsx       # CSV file upload, parser, and template download
+│   │   └── DataImportPage.tsx       # FINANCIAL DATA CENTER (Universal multi-format ingestion)
 │   ├── App.tsx                      # Root component & page router
 │   ├── index.css                    # Tailwind CSS directives & custom styling
 │   └── main.tsx                     # React DOM entry point
@@ -169,7 +191,8 @@ finshield/
 
 ## 🔒 Trust, Security & Responsible AI Positioning
 
-- **Not an Accounting Replacement**: FINSHIELD is built specifically for **dependency and scenario intelligence**.
-- **Transparent Mathematical Logic**: Every risk score displays its empirical drivers; no black-box hallucinations.
+- **No-Hallucination Guarantee**: Values are never invented; missing or ambiguous items are flagged as `unknown` with low confidence.
+- **Human-in-the-Loop Review Screen**: Every extracted field displays confidence level and exact source traceability (`invoice_001.pdf Page 2`, `bank_transactions.csv Row 128`, etc.) for auditability.
 - **Enterprise Security Ready**: Designed for consent-based API connections, read-only data minimization, and audit trails.
 - **Clear Synthetic Labeling**: All demo datasets are explicitly tagged as synthetic simulation data.
+

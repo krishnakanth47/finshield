@@ -6,6 +6,7 @@ import { EarlyWarningBanner } from '../components/common/EarlyWarningBanner';
 import { CashFlowForecastChart } from '../components/charts/CashFlowForecastChart';
 import { DependencyGraph } from '../components/digitalTwin/DependencyGraph';
 import { ActionCard } from '../components/actions/ActionCard';
+import { DataSourceIndicator } from '../components/common/DataSourceIndicator';
 import { 
   ShieldCheck, 
   Clock, 
@@ -59,6 +60,9 @@ export const DashboardPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Multi-Format Data Sources Indicator */}
+      <DataSourceIndicator />
 
       {/* Early Warning Banner */}
       <EarlyWarningBanner />

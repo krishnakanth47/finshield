@@ -29,7 +29,7 @@ export const Navbar: React.FC = () => {
     { id: 'simulate', label: 'What-If Simulator', icon: SlidersHorizontal },
     { id: 'risk', label: 'Risk Intelligence', icon: AlertTriangle },
     { id: 'actions', label: 'AI Prevention Plan', icon: Lightbulb },
-    { id: 'data', label: 'Data Hub', icon: Database },
+    { id: 'data', label: 'Data Center', icon: Database },
   ];
 
   return (

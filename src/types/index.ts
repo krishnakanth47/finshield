@@ -206,4 +206,117 @@ export interface MSMEDataSet {
   operations: OperationMetric;
   lastUpdated: string;
   isCustomUploaded: boolean;
+  dataSourcesSummary?: {
+    filesCount: number;
+    recordsCount: number;
+    formats: string[];
+    needsReviewCount: number;
+    qualityScore: number;
+    lastUpdated: string;
+  };
+}
+
+// Multi-Format Ingestion Contracts
+export type DocumentFormat = 'IMAGE' | 'PDF' | 'DOCX' | 'CSV';
+
+export type ExtractionStatus = 
+  | 'PENDING' 
+  | 'DETECTING' 
+  | 'EXTRACTING' 
+  | 'PARSING' 
+  | 'NORMALIZING' 
+  | 'VALIDATING' 
+  | 'COMPLETED' 
+  | 'ERROR';
+
+export type ConfidenceTier = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface ExtractedField {
+  id: string;
+  field: string;
+  displayName: string;
+  value: string | number | null;
+  normalizedValue?: string | number;
+  confidence: number; // 0.00 to 1.00
+  confidenceTier: ConfidenceTier;
+  sourceFile: string;
+  sourceLocation: string; // e.g., "Page 2", "Row 128", "Table 2 Row 6", "OCR Block #3"
+  status: 'APPROVED' | 'PENDING' | 'REJECTED';
+  isDuplicate?: boolean;
+  duplicateDetails?: string;
+  matchedEntityId?: string;
+  matchedEntityName?: string;
+  matchedConfidence?: number;
+  targetEntityType: 'CUSTOMER' | 'RECEIVABLE' | 'SUPPLIER' | 'PAYABLE' | 'INVENTORY' | 'TRANSACTION' | 'LOAN';
+}
+
+export interface ProcessedFile {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  format: DocumentFormat;
+  uploadedAt: string;
+  status: ExtractionStatus;
+  progress: number;
+  stageMessage: string;
+  recordsCount: number;
+  highConfidenceCount: number;
+  needsReviewCount: number;
+  extractedFields: ExtractedField[];
+  rawTextPreview?: string;
+  warnings: string[];
+  errorMessage?: string;
+}
+
+export interface EntityMatch {
+  id: string;
+  originalName: string;
+  matchedName: string;
+  confidence: number;
+  entityType: 'CUSTOMER' | 'SUPPLIER';
+  status: 'PENDING' | 'MERGED' | 'KEPT_SEPARATE';
+}
+
+export interface DuplicateRecordAlert {
+  id: string;
+  recordIdentifier: string; // e.g. "INV-2026-089"
+  entityName: string;
+  amount: number;
+  date: string;
+  sourceA: string;
+  sourceB: string;
+  status: 'PENDING' | 'SKIPPED' | 'IMPORTED';
+}
+
+export interface DataQualityReport {
+  score: number; // 0 - 100
+  totalRecords: number;
+  highConfidence: number;
+  needsReview: number;
+  unresolved: number;
+  missingFieldsCount: number;
+  lowConfidenceOcrCount: number;
+  duplicatesCount: number;
+  unmatchedEntitiesCount: number;
+}
+
+export interface DetectedScenarioSuggestion {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  targetEntity: string;
+  exposureAmount: number;
+  scenarioConfig: ScenarioConfig;
+}
+
+export interface ImportHistoryItem {
+  id: string;
+  fileName: string;
+  format: DocumentFormat;
+  date: string;
+  recordsExtracted: number;
+  recordsAccepted: number;
+  status: 'SUCCESS' | 'WARNING' | 'ERROR';
+  warnings: string[];
 }
