@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useFinShield } from '../context/FinShieldContext';
 import { MultiFormatUploader } from '../components/data/MultiFormatUploader';
+import { SampleMultimodalTestSuite } from '../components/data/SampleMultimodalTestSuite';
 import { DataReviewTable } from '../components/data/DataReviewTable';
 import { DataQualityCard } from '../components/data/DataQualityCard';
 import { EntityResolutionModal } from '../components/data/EntityResolutionModal';
@@ -81,6 +82,9 @@ export const DataImportPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Official Downloadable Test Suite & Multimodal Sandbox */}
+      <SampleMultimodalTestSuite />
 
       {/* Multi-Format Ingestion Uploader */}
       <MultiFormatUploader />

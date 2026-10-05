@@ -1,4 +1,4 @@
-import { ExtractedField } from '../../types';
+﻿import { ExtractedField } from '../../types';
 import { normalizeCurrency, normalizeDate } from './normalizer';
 import { getConfidenceTier } from './confidenceEngine';
 
@@ -32,51 +32,163 @@ export const parseSmartCSV = (csvContent: string, fileName: string): SmartCSVRes
   }
 
   const rawHeaders = lines[0].split(',').map((h) => h.trim());
+  const normalizedHeaders = rawHeaders.map((h) => h.toLowerCase().replace(/[^a-z0-9_]/g, ''));
 
-  // Heuristic Schema Mappings
-  const headerAliases: Record<string, { field: string; displayName: string; target: 'CUSTOMER' | 'RECEIVABLE' | 'SUPPLIER' | 'PAYABLE' | 'TRANSACTION' }> = {
-    // Customer
+  // Check if this is the finshield_master_dataset schema
+  // record_type,entity_id,name_or_item,category_or_type,date_or_due,amount_or_valuation_inr,status_or_metrics
+  const isFinShieldMaster = 
+    normalizedHeaders.includes('record_type') && 
+    (normalizedHeaders.includes('name_or_item') || normalizedHeaders.includes('entity_id'));
+
+  if (isFinShieldMaster) {
+    let rowCount = 0;
+    const headerIndices: Record<string, number> = {};
+    normalizedHeaders.forEach((h, idx) => {
+      headerIndices[h] = idx;
+    });
+
+    mappings.push(
+      { csvHeader: 'record_type', mappedField: 'record_type', displayName: 'Entity Category Type', confidence: 1.0 },
+      { csvHeader: 'entity_id', mappedField: 'entity_id', displayName: 'Reference / Invoice ID', confidence: 0.99 },
+      { csvHeader: 'name_or_item', mappedField: 'name_or_item', displayName: 'Counterparty / Asset Name', confidence: 0.98 },
+      { csvHeader: 'category_or_type', mappedField: 'category_or_type', displayName: 'Classification', confidence: 0.95 },
+      { csvHeader: 'date_or_due', mappedField: 'due_date', displayName: 'Maturity / Event Date', confidence: 0.97 },
+      { csvHeader: 'amount_or_valuation_inr', mappedField: 'amount', displayName: 'Financial Value (INR)', confidence: 0.99 },
+      { csvHeader: 'status_or_metrics', mappedField: 'status_or_metrics', displayName: 'Risk / Operational Metrics', confidence: 0.94 }
+    );
+
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(',').map((c) => c.trim());
+      if (row.length < 3) continue;
+      rowCount++;
+
+      const recType = (row[headerIndices['record_type']] || '').toUpperCase();
+      const entityId = row[headerIndices['entity_id']] || `ID-${i}`;
+      const nameOrItem = row[headerIndices['name_or_item']] || 'Unknown Entity';
+      const category = row[headerIndices['category_or_type']] || '';
+      const dateStr = row[headerIndices['date_or_due']] || '';
+      const amountRaw = row[headerIndices['amount_or_valuation_inr']] || '0';
+      const statusOrMetric = row[headerIndices['status_or_metrics']] || '';
+
+      const normAmount = normalizeCurrency(amountRaw).amount || parseFloat(amountRaw.replace(/[^\d.]/g, '')) || 0;
+      const normDate = normalizeDate(dateStr) || dateStr;
+
+      // Map target entity type
+      let targetEntity: 'RECEIVABLE' | 'CUSTOMER' | 'SUPPLIER' | 'PAYABLE' | 'INVENTORY' | 'LOAN' | 'TRANSACTION' = 'RECEIVABLE';
+      if (recType.includes('RECEIVABLE')) targetEntity = 'RECEIVABLE';
+      else if (recType.includes('PAYABLE')) targetEntity = 'PAYABLE';
+      else if (recType.includes('INVENTORY')) targetEntity = 'INVENTORY';
+      else if (recType.includes('LOAN')) targetEntity = 'LOAN';
+      else if (recType.includes('TRANSACTION')) targetEntity = 'TRANSACTION';
+
+      // 1. Entity / Name Field
+      fields.push({
+        id: `csv_ms_${i}_name`,
+        field: recType.includes('PAYABLE') ? 'supplier_name' : recType.includes('RECEIVABLE') ? 'customer_name' : 'entity_name',
+        displayName: recType.includes('PAYABLE') ? 'Supplier Name' : recType.includes('RECEIVABLE') ? 'Customer Name' : 'Asset / Entity',
+        value: nameOrItem,
+        confidence: 0.98,
+        confidenceTier: 'HIGH',
+        sourceFile: fileName,
+        sourceLocation: `Row ${i} (${recType})`,
+        status: 'APPROVED',
+        targetEntityType: targetEntity,
+      });
+
+      // 2. Reference / Invoice ID
+      fields.push({
+        id: `csv_ms_${i}_id`,
+        field: recType.includes('PAYABLE') ? 'payable_id' : recType.includes('RECEIVABLE') ? 'invoice_number' : 'reference_id',
+        displayName: recType.includes('RECEIVABLE') ? 'Invoice ID' : 'Reference / Obligation ID',
+        value: entityId,
+        confidence: 0.99,
+        confidenceTier: 'HIGH',
+        sourceFile: fileName,
+        sourceLocation: `Row ${i} (${recType})`,
+        status: 'APPROVED',
+        targetEntityType: targetEntity,
+      });
+
+      // 3. Amount Field
+      fields.push({
+        id: `csv_ms_${i}_amt`,
+        field: recType.includes('PAYABLE') ? 'payable_amount' : recType.includes('RECEIVABLE') ? 'invoice_amount' : recType.includes('INVENTORY') ? 'inventory_value' : 'amount',
+        displayName: recType.includes('INVENTORY') ? 'Valuation (INR)' : 'Amount (INR)',
+        value: normAmount,
+        normalizedValue: normAmount,
+        confidence: 0.99,
+        confidenceTier: 'HIGH',
+        sourceFile: fileName,
+        sourceLocation: `Row ${i} (${recType})`,
+        status: 'APPROVED',
+        targetEntityType: targetEntity,
+      });
+
+      // 4. Due Date
+      if (normDate) {
+        fields.push({
+          id: `csv_ms_${i}_date`,
+          field: 'due_date',
+          displayName: 'Due / Event Date',
+          value: normDate,
+          normalizedValue: normDate,
+          confidence: 0.97,
+          confidenceTier: 'HIGH',
+          sourceFile: fileName,
+          sourceLocation: `Row ${i} (${recType})`,
+          status: 'APPROVED',
+          targetEntityType: targetEntity,
+        });
+      }
+
+      // 5. Status / Metric
+      if (statusOrMetric) {
+        fields.push({
+          id: `csv_ms_${i}_status`,
+          field: 'status_or_metrics',
+          displayName: 'Risk / Status Tag',
+          value: statusOrMetric,
+          confidence: 0.95,
+          confidenceTier: 'HIGH',
+          sourceFile: fileName,
+          sourceLocation: `Row ${i} (${recType})`,
+          status: 'APPROVED',
+          targetEntityType: targetEntity,
+        });
+      }
+    }
+
+    return {
+      mappings,
+      rowCount,
+      fields,
+      warnings,
+    };
+  }
+
+  // Standard Generic Heuristic Column Mapping Fallback
+  const headerAliases: Record<string, { field: string; displayName: string; target: 'CUSTOMER' | 'RECEIVABLE' | 'SUPPLIER' | 'PAYABLE' | 'TRANSACTION' | 'INVENTORY' | 'LOAN' }> = {
     customer: { field: 'customer_name', displayName: 'Customer', target: 'CUSTOMER' },
     customername: { field: 'customer_name', displayName: 'Customer', target: 'CUSTOMER' },
     client: { field: 'customer_name', displayName: 'Customer', target: 'CUSTOMER' },
-    client_name: { field: 'customer_name', displayName: 'Customer', target: 'CUSTOMER' },
     buyer: { field: 'customer_name', displayName: 'Customer', target: 'CUSTOMER' },
-    buyername: { field: 'customer_name', displayName: 'Customer', target: 'CUSTOMER' },
-
-    // Supplier
     supplier: { field: 'supplier_name', displayName: 'Supplier', target: 'SUPPLIER' },
     suppliername: { field: 'supplier_name', displayName: 'Supplier', target: 'SUPPLIER' },
     vendor: { field: 'supplier_name', displayName: 'Supplier', target: 'SUPPLIER' },
     vendorname: { field: 'supplier_name', displayName: 'Supplier', target: 'SUPPLIER' },
-
-    // Invoice
     invoicenumber: { field: 'invoice_number', displayName: 'Invoice Number', target: 'RECEIVABLE' },
     inv_number: { field: 'invoice_number', displayName: 'Invoice Number', target: 'RECEIVABLE' },
     invnumber: { field: 'invoice_number', displayName: 'Invoice Number', target: 'RECEIVABLE' },
     inv_no: { field: 'invoice_number', displayName: 'Invoice Number', target: 'RECEIVABLE' },
-    invoice: { field: 'invoice_number', displayName: 'Invoice Number', target: 'RECEIVABLE' },
-    bill_no: { field: 'invoice_number', displayName: 'Invoice Number', target: 'RECEIVABLE' },
-
-    // Amount
+    invoiceid: { field: 'invoice_number', displayName: 'Invoice Number', target: 'RECEIVABLE' },
     amount: { field: 'invoice_amount', displayName: 'Amount', target: 'RECEIVABLE' },
     invoiceamount: { field: 'invoice_amount', displayName: 'Amount', target: 'RECEIVABLE' },
-    inv_total: { field: 'invoice_amount', displayName: 'Amount', target: 'RECEIVABLE' },
-    total: { field: 'invoice_amount', displayName: 'Amount', target: 'RECEIVABLE' },
-    value: { field: 'invoice_amount', displayName: 'Amount', target: 'RECEIVABLE' },
-    balance: { field: 'invoice_amount', displayName: 'Amount', target: 'RECEIVABLE' },
-    receivableamount: { field: 'invoice_amount', displayName: 'Amount', target: 'RECEIVABLE' },
     payableamount: { field: 'payable_amount', displayName: 'Payable Amount', target: 'PAYABLE' },
-
-    // Dates
     duedate: { field: 'due_date', displayName: 'Due Date', target: 'RECEIVABLE' },
-    due: { field: 'due_date', displayName: 'Due Date', target: 'RECEIVABLE' },
-    expecteddate: { field: 'due_date', displayName: 'Due Date', target: 'RECEIVABLE' },
-    paymentdate: { field: 'due_date', displayName: 'Due Date', target: 'RECEIVABLE' },
     date: { field: 'transaction_date', displayName: 'Date', target: 'TRANSACTION' },
-    invoicedate: { field: 'invoice_date', displayName: 'Invoice Date', target: 'RECEIVABLE' },
   };
 
-  const detectedColumns: { index: number; field: string; displayName: string; target: 'CUSTOMER' | 'RECEIVABLE' | 'SUPPLIER' | 'PAYABLE' | 'TRANSACTION' }[] = [];
+  const detectedColumns: { index: number; field: string; displayName: string; target: 'CUSTOMER' | 'RECEIVABLE' | 'SUPPLIER' | 'PAYABLE' | 'TRANSACTION' | 'INVENTORY' | 'LOAN' }[] = [];
 
   rawHeaders.forEach((rawH, idx) => {
     const key = rawH.toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -100,7 +212,6 @@ export const parseSmartCSV = (csvContent: string, fileName: string): SmartCSVRes
   });
 
   let rowCount = 0;
-
   for (let i = 1; i < lines.length; i++) {
     const row = lines[i].split(',').map((c) => c.trim());
     if (row.length < 2) continue;

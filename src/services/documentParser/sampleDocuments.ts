@@ -1,74 +1,125 @@
-// Sample multi-format demo documents representing messy real-world MSME data
+﻿// FinShield Official Multi-Format Test Suite Files & Payloads
 
-export const DEMO_FILES_METADATA = [
+export interface TestSuiteFileDefinition {
+  name: string;
+  type: string;
+  format: 'CSV' | 'PDF' | 'DOCX' | 'IMAGE';
+  size: number;
+  description: string;
+  entityCount: number;
+  highlightDetails: string;
+  downloadUrl?: string;
+  content: string;
+}
+
+export const OFFICIAL_TEST_FILES: TestSuiteFileDefinition[] = [
   {
-    name: 'sample_invoice.pdf',
-    type: 'application/pdf',
-    format: 'PDF',
-    size: 24580,
-    content: `%PDF-1.4
-TAX INVOICE - APEX AUTO SYSTEMS LTD
-INVOICE NUMBER: INV-PDF-2026-904
-DATE: 2026-10-15
-BUYER: Apex Auto Systems Ltd
-SUPPLIER: ABC Precision Components
-LINE ITEMS:
-1. Precision EN8 Forged Transmission Shafts - Qty: 400 - Total: ₹7,00,000
-SUBTOTAL: ₹7,00,000
-GST (18%): ₹1,26,000
-TOTAL INVOICE AMOUNT: ₹7,00,000
-PAYMENT TERMS: NET 30 DAYS
-DUE DATE: 2026-11-14
-PAYMENT STATUS: UNPAID / OUTSTANDING`,
-  },
-  {
-    name: 'sample_bank_statement.csv',
+    name: 'finshield_master_dataset.csv',
     type: 'text/csv',
     format: 'CSV',
-    size: 14820,
-    content: `Date,Description,Transaction_Type,Amount,Balance,Reference
-2026-10-01,Opening Balance,CREDIT,820000,820000,INIT-BAL
-2026-10-03,Factory Electric Power MSEB,DEBIT,45000,775000,TX-901
-2026-10-05,Delta Industrial Collections,CREDIT,220000,995000,TX-902
-2026-10-07,CNC Machinist Weekly Wages,DEBIT,85000,910000,TX-903
-2026-10-10,TechParts Sensor Supplies,DEBIT,90000,820000,TX-904`,
+    size: 746,
+    description: 'Master enterprise ledger with 7 cross-domain financial rows across 5 critical risk dimensions.',
+    entityCount: 7,
+    highlightDetails: 'Receivables (Apex, Delta), Payables (SteelWorks, Precision), Inventory, SBI Loan, UPI Inflow',
+    downloadUrl: '/sample_files/finshield_master_dataset.csv',
+    content: `record_type,entity_id,name_or_item,category_or_type,date_or_due,amount_or_valuation_inr,status_or_metrics
+RECEIVABLE,INV-1001,Apex Auto Systems Ltd,Customer Invoice,2026-09-25,700000,Delayed (20 days)
+RECEIVABLE,INV-1002,Delta Industrial,Customer Invoice,2026-09-30,450000,On-Time
+PAYABLE,PAY-2001,SteelWorks India (Critical),Supplier Payable,2026-10-02,410000,Critical Risk
+PAYABLE,PAY-2002,Precision Materials,Supplier Payable,2026-10-08,210000,Medium Risk
+INVENTORY,MAT-4001,Alloy Steel Forged Billets,Raw Material,2026-10-01,675000,21 Days Coverage
+LOAN,LOAN-5001,State Bank of India,Working Capital EMI,2026-10-05,140000,Mandatory Reserve
+TRANSACTION,TXN-6001,Apex Auto Systems Ltd,Bank Credit UPI,2026-09-01,350000,Running Balance: ₹8.5L`,
   },
   {
-    name: 'sample_supplier_statement.docx',
+    name: 'invoice_sample.pdf',
+    type: 'application/pdf',
+    format: 'PDF',
+    size: 3374,
+    description: 'Scanned commercial invoice with line item table, buyer/vendor addresses, and delayed payment notice.',
+    entityCount: 5,
+    highlightDetails: 'Invoice ID #INV-1001, Apex Auto Systems Ltd, ₹7,00,000, Net 25 Days Due: 2026-09-25 (Delayed)',
+    downloadUrl: '/sample_files/invoice_sample.pdf',
+    content: `===================================================
+                  COMMERCIAL INVOICE
+===================================================
+INVOICE ID: INV-1001
+ISSUED DATE: 01 September 2026
+DUE DATE: 25 September 2026
+
+VENDOR / ISSUER:
+Apex Auto Systems Ltd
+Coimbatore Industrial Estate, Tamil Nadu
+
+BILLED TO:
+ABC Precision Components
+MSME Unit ID: UDYAM-TN-02-0049120
+
+---------------------------------------------------
+ITEM DESCRIPTION                QTY    TOTAL (INR)
+---------------------------------------------------
+Precision Machined Component     1      7,00,000
+Batch A-4 (Automotive Grade)
+---------------------------------------------------
+TOTAL AMOUNT DUE:               INR 7,00,000
+PAYMENT TERMS:                  Net 25 Days
+CURRENT STATUS:                 PENDING / DELAYED
+===================================================`,
+  },
+  {
+    name: 'contract_terms.docx',
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     format: 'DOCX',
-    size: 32150,
-    content: `FINANCIAL OPERATIONS & SUPPLIER STATEMENT REPORT
-COMPANY: ABC Precision Components
-SUPPLIER: SteelWorks India Ltd
-CATEGORY: Grade EN8 Alloy Steel Forgings
-PAYABLE AMOUNT: ₹4,10,000
-DUE DATE: 2026-10-31
-CRITICALITY: CRITICAL - Single source for CNC turning shafts
-SECONDARY SUPPLIER: Precision Materials Co - Payable: ₹2,40,000 - Due: 2026-11-08
-INVENTORY VALUATION: Current Raw Material Value: ₹6,80,000`,
+    size: 37606,
+    description: 'Procurement agreement with credit limits, 30-day payment window, and sole-source dependency risk clause.',
+    entityCount: 6,
+    highlightDetails: 'SteelWorks India (Critical), Credit Limit: ₹5,00,000, Net 30 Days, 2% Overdue Penalty, Single-Source EN24',
+    downloadUrl: '/sample_files/contract_terms.docx',
+    content: `SUPPLIER CREDIT & STRATEGIC SUPPLY AGREEMENT
+
+Vendor Name: SteelWorks India (Critical Supplier)
+Effective Date: 15 June 2026
+Target Business: ABC Precision Components
+
+TERMS & CONDITIONS:
+1. Credit Facility: The vendor extends an unsecured credit line up to ₹5,00,000 for raw material procurement.
+2. Standard Payment Window: Net 30 days from the invoice issuance date.
+3. Penalty Clauses: A 2% monthly interest penalty applies automatically to overdue balances exceeding 30 days.
+4. Single-Source Dependency: This supplier is classified as a single-source provider for Alloy Steel Forged Billets (Grade EN24). Any supply chain disruption directly impacts factory production continuity.
+
+Current Outstanding Payable: ₹4,10,000
+Payment Due Date: 2026-10-02
+Criticality Rating: CRITICAL`,
   },
   {
-    name: 'sample_inventory_bill.jpg',
-    type: 'image/jpeg',
+    name: 'upi_receipt.png',
+    type: 'image/png',
     format: 'IMAGE',
-    size: 48920,
-    content: `TAX INVOICE / PURCHASE BILL
-INVOICE NO: INV-PHOTO-782
-DATE: 2026-10-18
-BUYER: Apex Auto Systems Ltd
-SELLER: ABC Precision Components
-ITEMS:
-1. Precision Turned Gear Shafts EN8 - ₹7,00,000
-GST (18%): ₹1,26,000
-TOTAL AMOUNT: ₹7,00,000
-DUE DATE: 2026-11-05
-PAYMENT STATUS: OUTSTANDING`,
+    size: 50088,
+    description: 'Mobile banking UPI payment confirmation receipt snapshot for consumable supplies settlement.',
+    entityCount: 6,
+    highlightDetails: 'Transaction ID UPI/524890123489, Industrial Fasteners Hub, Rs. 1,50,000 / -, Status: COMPLETED',
+    downloadUrl: '/sample_files/upi_receipt.png',
+    content: `=========================================
+      SUCCESSFUL UPI PAYMENT RECEIPT
+=========================================
+Transaction ID: UPI/524890123489
+Date & Time: 12 September 2026, 14:32 IST
+
+Paid To: Industrial Fasteners Hub
+Category: Consumables & Shop Supplies
+Payment Channel: Mobile UPI (Google Pay / PhonePe)
+
+Amount Paid: Rs. 1,50,000 / -
+Status: COMPLETED & VERIFIED
+=========================================`,
   },
 ];
 
+export const DEMO_FILES_METADATA = OFFICIAL_TEST_FILES;
+
 export const createSyntheticDemoFiles = (): File[] => {
-  return DEMO_FILES_METADATA.map((meta) => {
+  return OFFICIAL_TEST_FILES.map((meta) => {
     const blob = new Blob([meta.content], { type: meta.type });
     return new File([blob], meta.name, { type: meta.type, lastModified: Date.now() });
   });

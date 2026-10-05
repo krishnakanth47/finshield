@@ -1,0 +1,8 @@
+record_type,entity_id,name_or_item,category_or_type,date_or_due,amount_or_valuation_inr,status_or_metrics
+RECEIVABLE,INV-1001,Apex Auto Systems Ltd,Customer Invoice,2026-09-25,700000,Delayed (20 days)
+RECEIVABLE,INV-1002,Delta Industrial,Customer Invoice,2026-09-30,450000,On-Time
+PAYABLE,PAY-2001,SteelWorks India (Critical),Supplier Payable,2026-10-02,410000,Critical Risk
+PAYABLE,PAY-2002,Precision Materials,Supplier Payable,2026-10-08,210000,Medium Risk
+INVENTORY,MAT-4001,Alloy Steel Forged Billets,Raw Material,2026-10-01,675000,21 Days Coverage
+LOAN,LOAN-5001,State Bank of India,Working Capital EMI,2026-10-05,140000,Mandatory Reserve
+TRANSACTION,TXN-6001,Apex Auto Systems Ltd,Bank Credit UPI,2026-09-01,350000,Running Balance: ₹8.5L
